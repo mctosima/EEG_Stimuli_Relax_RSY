@@ -13,7 +13,6 @@ def get_psd_feature(
     plot_psd: bool = False,
     save_psd: bool = False,
     channel_drop: list = None,
-    print_summary: bool = False,
 ):
     
     # 1. Only get the signal from the dataframe
