@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+from scipy import stats
+import csv
 
 def get_psd_feature(
     dataframe,
@@ -115,5 +117,49 @@ def get_psd_feature(
 def load_mnedf(edf_path):
     signal_df = mne.io.read_raw_edf(edf_path, preload=True, verbose=False).to_data_frame()
     return signal_df
+
+def get_ttest(csv_path, noise, task, freq, feature, savelog=False):
+    # 1. read csv file
+    df = pd.read_csv(csv_path)
+
+    # 2. get data
+    df_silent = df[(df['noise_type'] == 'silent') & (df['task'] == task) & (df['freq_type'] == freq)]
+    df_noise = df[(df['noise_type'] == noise) & (df['task'] == task) & (df['freq_type'] == freq)]
+
+    # 3. get feature
+    group_silent = df_silent[feature]
+    group_noise = df_noise[feature]
+
+    # 4. Levene's test
+    t_levene, p_levene = stats.levene(group_silent, group_noise)
+
+    # 5. t-test
+    if p_levene < 0.05:
+        ttest_val, p_val = stats.ttest_ind(group_silent, group_noise, equal_var=False)
+    else:
+        ttest_val, p_val = stats.ttest_ind(group_silent, group_noise, equal_var=True)
+
+    print(f"Levene's test: {t_levene}, {p_levene} | t-test -> {ttest_val}, p = {p_val}")
+
+    # save log as new row in csv file named `ttest_log.csv`
+    if savelog:
+        log_csv_path = 'ttest_log.csv'
+
+        if not os.path.exists(log_csv_path):
+            with open(log_csv_path, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['noise', 'task', 'freq', 'feature', 't_levene', 'p_levene', 'ttest_val', 'p_val'])
+
+        with open(log_csv_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+
+            if os.stat(log_csv_path).st_size == 0:
+                writer.writerow(['noise', 'task', 'freq', 'feature', 't_levene', 'p_levene', 'ttest_val', 'p_val'])
+
+            writer.writerow([noise, task, freq, feature, t_levene, p_levene, ttest_val, p_val])
+
+    return ttest_val, p_val
+    
+
     
         
