@@ -11,8 +11,9 @@ def get_psd_feature(
     len_drop: int = 7680,
     len_keep: int = 46080,
     plot_psd: bool = False,
-    save_psd: bool = False,
+    return_psd: bool = False,
     channel_drop: list = None,
+    select_channels: list = None,
 ):
     
     # 1. Only get the signal from the dataframe
@@ -21,6 +22,10 @@ def get_psd_feature(
     # Drop channels if `channel_drop` is not None
     if channel_drop is not None:
         df_signal = df_signal.drop(columns=channel_drop)
+        
+    # Select certain channels based on `select_channels`
+    if select_channels is not None:
+        df_signal = df_signal[select_channels]
     
     # 2. Crop the signal
     df_signal = df_signal.iloc[len_drop:]
@@ -68,6 +73,7 @@ def get_psd_feature(
         verbose = False,
     )
     
+            
     # 7. Count the features
     sum_raw = np.sum(psd_raw)
     avg_raw = np.average(psd_raw)
@@ -87,6 +93,27 @@ def get_psd_feature(
         'rel_pow': rel_pow,
     }
     
+    if plot_psd:
+        # Plot the PSD
+        plt.figure(figsize=(10, 5))
+        plt.plot(freqs_filtered, psd_filered.mean(0), color='r')
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Power spectral density (dB)')
+        plt.title('PSD of filtered signal')
+        xlim = (freq_range[0]-2, freq_range[1]+2)
+        plt.xlim(xlim)        
+        plt.show()
+        
+    if return_psd:
+        output['psd_raw'] = psd_raw
+        output['psd_raw_freqs'] = freqs
+        output['psd_filtered'] = psd_filered
+        output['psd_filtered_freqs'] = freqs_filtered
+    
     return output
+
+def load_mnedf(edf_path):
+    signal_df = mne.io.read_raw_edf(edf_path, preload=True, verbose=False).to_data_frame()
+    return signal_df
     
         
